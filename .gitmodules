@@ -1,0 +1,8 @@
+[submodule "storageSDKsTestBed.Tests"]
+	path = test/storage-sdks-testbed
+	url = https://github.com/becheng/storage-sdks-testbed.git
+	branch=main
+[submodule "src/storageAdapter.Models"]
+	path = src/storageAdapter.Models
+	url = https://github.com/becheng/storageAdapter.Models.git
+	branch=main
