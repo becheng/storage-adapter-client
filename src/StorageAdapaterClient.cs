@@ -105,8 +105,8 @@ public class StorageAdapterClient
         }
         catch (HttpRequestException e)
         {
-            Debug.WriteLine("\nException Caught!");
-            Debug.WriteLine("Message :{0} ", e.Message);
+            Console.WriteLine("\nException Caught!");
+            Console.WriteLine("Message :{0} ", e.Message);
             throw e;
         }
     }

@@ -26,4 +26,16 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\storageAdapterClient.csproj" Aliases="StorageAdapterClientModels"/>
   </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.Tests.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+      <None Update="sampleImage.jpg">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
