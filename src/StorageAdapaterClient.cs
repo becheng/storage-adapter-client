@@ -1,7 +1,6 @@
 ﻿using Azure.Core;
 using Azure.Storage.Blobs;
 using Azure.Identity;
-using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using StorageAdapter.Models;
@@ -9,7 +8,6 @@ using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Configuration;
-
 namespace StorageAdapter.Client;
 
 #pragma warning disable 0436
@@ -18,20 +16,29 @@ public class StorageAdapterClient
 
     private HttpClient _httpClient;
 
-    private readonly string _baseAddress;
+    private readonly string? _baseAddress;
     private readonly string _storageAdapterPath = "storageMapping/";
     private readonly IConfiguration _configuration;
 
     public StorageAdapterClient()
     {
         // override the appsettings.json with appsettings.{environmentName}.json if one exists    
-        string environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+        string? environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
         _configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile(@"appsettings.json", optional: false, reloadOnChange: true)
             .AddJsonFile($"appsettings.{environmentName}.json", optional: true, reloadOnChange: true)
             .Build();
+
+        // to avoid the circular reference because we need the KeyVaultName from the configuration
+        // we need to build the configuration again after we have the KeyVaultName from the configuration
+        _configuration = new ConfigurationBuilder()
+            .AddConfiguration(_configuration)
+            .AddAzureKeyVault(
+                new Uri($"https://{_configuration["KeyVaultName"]}.vault.azure.net/"),
+                new DefaultAzureCredential())
+            .Build();    
 
         _baseAddress = _configuration["StorageAdapterApiBaseAddress"];
 
@@ -143,10 +150,9 @@ public class StorageAdapterClient
             
                 if (isAzureCrossTenant) 
                 {
-                    // TODO - retrieve from tenantStorageMapping which should be set from the api via key vault 
-                    string clientId = "148e6be3-b0ee-4761-98cb-1d67fafa9b0d";
-                    // TODO - retrieve from tenantStorageMapping which should be set from the api via key vault 
-                    string clientSecret = "aDH8Q~.UhIb6~-jyyqUPD_e29sFkBdSNDCVJZaDh";                    
+                    // usage 'az keyvault secret set --vault-name <kvName> --name "mttServicePrincipal--clientId" --value <secretValue>'                    
+                    string? clientId = _configuration["mttServicePrincipal:clientId"];
+                    string? clientSecret = _configuration["mttServicePrincipal:clientSecret"];                    
                     credential = new ClientSecretCredential(azureCrossTenantId, clientId, clientSecret);
                 } 
                 else 
@@ -178,11 +184,14 @@ public class StorageAdapterClient
         string? bucketRegion = tenantStorageMapping.StorageRegion;
         RegionEndpoint regionEndpoint = RegionEndpoint.GetBySystemName(tenantStorageMapping.StorageRegion);
 
-        // TODO - store the accessKey and secret in key vault OR use temporary credentials (https://docs.aws.amazon.com/AmazonS3/latest/userguide/AuthUsingTempSessionToken.html)
-        IAmazonS3 s3Client = new AmazonS3Client(
-            "AKIAVYRZSLZINPYEUHJ3", 
-            "s0RXFzXDT+st7qPizgjSDW/Tj/RsqYWPievcggXZ", 
-            regionEndpoint);
+        // usage 'az keyvault secret set --vault-name <kvName> --name "awsS3Client--accessKeyId" --value <secretValue>'                    
+        // usage 'az keyvault secret set --vault-name <kvName> --name "awsS3Client--secretAccessKey" --value <secretValue>'                    
+            // "AKIAVYRZSLZIHY4J3H5Q", accessKey
+            // "1W5QJoxFOiA8mJyfojbRAnR2gZ6DYvilWV7BVqRk", asskeySecret
+        string? awsAccessKeyId = _configuration["awsS3Client:accessKeyId"];
+        string? awsSecretAccessKey = _configuration["awsS3Client:secretAccessKey"];
+
+        IAmazonS3 s3Client = new AmazonS3Client(awsAccessKeyId, awsSecretAccessKey, regionEndpoint);
 
         var request = new GetPreSignedUrlRequest
         {

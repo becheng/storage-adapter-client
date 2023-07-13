@@ -22,9 +22,6 @@ public abstract class ClientTestsBase
 
     public ClientTestsBase()
     {
-        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
-
-        _storageAdapterClient = new StorageAdapterClient();
 
         _configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
@@ -36,11 +33,15 @@ public abstract class ClientTestsBase
         fi = new FileInfo(path);
         downloadPath = Path.Combine(Directory.GetCurrentDirectory(), "downloaded.jpg");           
 
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         // TODO: there is a probably a better way to do this.
         // Background: xUnit test runner does not leverage the launch.json for environment vars so we need to set them here.
         Environment.SetEnvironmentVariable("AZURE_CLIENT_ID", _configuration["AZURE_CLIENT_ID"]);
         Environment.SetEnvironmentVariable("AZURE_TENANT_ID", _configuration["AZURE_TENANT_ID"]);
         Environment.SetEnvironmentVariable("AZURE_CLIENT_SECRET", _configuration["AZURE_CLIENT_SECRET"]);
+        
+        // Important: instantiate the client here so that the environment variables are set
+        _storageAdapterClient = new StorageAdapterClient();
 
     }
     public abstract void Authenticate();
