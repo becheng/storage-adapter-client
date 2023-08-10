@@ -96,4 +96,18 @@ public class AzSasUriTests : ClientTestsBase
             await blobClient.DeleteAsync();
         }
    }
+
+    [Fact]
+    public async void CanGenerateSasUri()
+    {
+        StorageAdapterResponse response = await _storageAdapterClient.getTenantStorage(new StorageAdapterRequest(cxTenantId));
+        BlobContainerClient containerClient = response.blobContainerClient;
+        
+        // create a blobclient
+        BlobClient blobClient = containerClient.GetBlobClient(sampleImage);
+
+        bool canGenerateSasUri = blobClient.CanGenerateSasUri;
+
+        Assert.False(canGenerateSasUri);
+    }
 }

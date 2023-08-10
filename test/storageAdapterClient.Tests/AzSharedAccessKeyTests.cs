@@ -3,19 +3,21 @@ extern alias StorageAdapterClientModels;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using StorageAdapterClientModels::StorageAdapter.Models;
+using StorageAdapterClientModels::StorageAdapter.Client;
+using Azure.Storage.Sas;
 
 namespace storageAdapterClient.Tests;
 
-public class AzConnStrTests : ClientTestsBase
+public class AzSharedAccessKeyTests : ClientTestsBase
 {
     private readonly string? connectionString;
 
-    public AzConnStrTests()
+    public AzSharedAccessKeyTests()
     {       
         // set expected results 
-        cxTenantId = _configuration["AzConnStrTest:cxTenantId"];
-        storageAcctName = _configuration["AzConnStrTest:storageAcctName"];
-        containerName = _configuration["AzConnStrTest:containerName"];
+        cxTenantId = _configuration["AzSharedAccessKeyTest:cxTenantId"];
+        storageAcctName = _configuration["AzSharedAccessKeyTest:storageAcctName"];
+        containerName = _configuration["AzSharedAccessKeyTest:containerName"];
     }
 
     [Fact]
@@ -109,6 +111,72 @@ public class AzConnStrTests : ClientTestsBase
         bool canGenerateSasUri = blobClient.CanGenerateSasUri;
 
         Assert.True(canGenerateSasUri);
+    }
+
+    [Fact]
+    public async void UploadViaGeneratedSasUri()
+    {
+        // AFTER:
+        StorageAdapterResponse response = await _storageAdapterClient.getTenantStorage(new StorageAdapterRequest(cxTenantId));
+        BlobContainerClient containerClient = response.blobContainerClient;
+        
+        // Get reference to a blob 
+        BlobClient blobClient = containerClient.GetBlobClient(sampleImage);
+
+        try 
+        {   
+            // generate the sasUri for the given blob, i.e. sampleImage
+            Uri blobSASURI = await StorageAdapterUtil.GenerateSasUri(blobClient, BlobContainerSasPermissions.Create, 1);
+
+            // Create a blob client object representing 'sample-blob.txt' with SAS authorization
+            BlobClient blobClientSAS = new BlobClient(blobSASURI);
+
+            // Upload data to the blob
+            await blobClientSAS.UploadAsync(path, overwrite: true);
+
+            // Verify the uploaded image
+            BlobProperties properties = await blobClient.GetPropertiesAsync();
+            Assert.Equal(fi.Length, properties.ContentLength);    
+        } 
+        finally
+        {
+            // Clean up after the test when we're finished
+            await blobClient.DeleteAsync();
+        }
+    }
+
+    [Fact]
+    public async void DownloadViaGeneratedSasUri()
+    {
+        // AFTER:
+        StorageAdapterResponse response = await _storageAdapterClient.getTenantStorage(new StorageAdapterRequest(cxTenantId));
+        BlobContainerClient containerClient = response.blobContainerClient;
+
+        // Get reference to a blob 
+        BlobClient blobClient = containerClient.GetBlobClient(sampleImage);
+
+        // first Upload the image so it can be downloaded 
+        await blobClient.UploadAsync(path, overwrite: true);
+
+        try 
+        {
+            // generate the sasUri for the given blob, i.e. sampleImage
+            Uri blobSASURI = await StorageAdapterUtil.GenerateSasUri(blobClient, BlobContainerSasPermissions.Read, 1);
+
+            // Create a blob client object representing 'sample-blob.txt' with SAS authorization
+            BlobClient blobClientSAS = new BlobClient(blobSASURI);
+
+            // Download the blob's contents and save it to a file
+            await blobClientSAS.DownloadToAsync(downloadPath);
+
+            // Verify the downloaded image
+            Assert.Equal(fi.Length, File.ReadAllBytes(downloadPath).Length);    
+        } 
+        finally
+        {
+            // Clean up after the test when we're finished
+            await blobClient.DeleteAsync();
+        }
     }
 
 }

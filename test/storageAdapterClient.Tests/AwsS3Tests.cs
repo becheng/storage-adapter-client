@@ -5,6 +5,7 @@ using Amazon;
 using Amazon.S3;
 using Amazon.S3.Model;
 using StorageAdapterClientModels::StorageAdapter.Models;
+using StorageAdapterClientModels::StorageAdapter.Client;
 
 namespace storageAdapterClient.Tests;
 
@@ -41,10 +42,15 @@ public class AwsS3Tests : ClientTestsBase
         // string preSignedUrl = GeneratePreSignedURL(s3Client, awsBucketName, exisitingObjectKey, HttpVerb.GET, timeoutDuration);
 
         // AFTER:
-        StorageAdapterResponse storateAdapterResponse = await _storageAdapterClient.getTenantStorage(
-            new StorageAdapterRequest(cxTenantId, exisitingObjectKey, StorageAdapterRequest.SignedURIAction.Download));
+        StorageAdapterResponse storateAdapterResponse = await _storageAdapterClient.getTenantStorage(new StorageAdapterRequest(cxTenantId));
+        IAmazonS3 s3ClientPresigned = storateAdapterResponse.s3Client;
         
-        string? preSignedUrl = storateAdapterResponse.signedUri;
+        Uri? preSignedUrl = await StorageAdapterUtil.GeneratePresignedUrl(
+                                s3ClientPresigned,
+                                awsBucketName, 
+                                exisitingObjectKey, 
+                                HttpVerb.GET, 
+                                1);
 
         // send the request
         HttpResponseMessage response = await httpClient.GetAsync(preSignedUrl);
@@ -56,8 +62,12 @@ public class AwsS3Tests : ClientTestsBase
     [Fact]
     public override async Task Upload()
     {
-        // create client (used for preparing and cleaning up the test)
+        //create client (used for preparing and cleaning up the test)
         IAmazonS3 s3Client = new AmazonS3Client(awsAccessKeyId, awsSecretAccessKey, regionEndpoint);
+
+        // Get Client thru adapter client
+        StorageAdapterResponse storateAdapterResponse = await _storageAdapterClient.getTenantStorage(new StorageAdapterRequest(cxTenantId));
+        IAmazonS3 s3ClientPresigned = storateAdapterResponse.s3Client;
 
         try 
         {            
@@ -66,10 +76,12 @@ public class AwsS3Tests : ClientTestsBase
             // string preSignedUrl = GeneratePreSignedURL(s3Client, awsBucketName, sampleImage, HttpVerb.PUT, timeoutDuration);
 
             // AFTER:
-            StorageAdapterResponse storateAdapterResponse = await _storageAdapterClient.getTenantStorage(
-                new StorageAdapterRequest(cxTenantId, sampleImage, StorageAdapterRequest.SignedURIAction.Upload));
-
-            string? preSignedUrl = storateAdapterResponse.signedUri;
+            Uri? preSignedUrl = await StorageAdapterUtil.GeneratePresignedUrl(
+                                    s3ClientPresigned,
+                                    awsBucketName, 
+                                    sampleImage, 
+                                    HttpVerb.PUT, 
+                                    1);
             
             // send the request / upload the file
             HttpResponseMessage response = await httpClient.PutAsync(preSignedUrl, new ByteArrayContent(File.ReadAllBytes(path)));
@@ -90,19 +102,27 @@ public class AwsS3Tests : ClientTestsBase
         // create client (used for preparing and cleaning up the test)
         IAmazonS3 s3Client = new AmazonS3Client(awsAccessKeyId, awsSecretAccessKey, regionEndpoint);
 
+        // Get Client thru adapter client
+        StorageAdapterResponse storateAdapterResponse = await _storageAdapterClient.getTenantStorage(new StorageAdapterRequest(cxTenantId));
+        IAmazonS3 s3ClientPresigned = storateAdapterResponse.s3Client;
+
+        // first run upload an image to the bucket so it can downloaded
+        await s3Client.UploadObjectFromFilePathAsync(awsBucketName, sampleImage, path, null);
+
         try
         {
-            // first run upload an image to the bucket so it can downloaded
-            await s3Client.UploadObjectFromFilePathAsync(awsBucketName, sampleImage, path, null);
         
             // BEFORE:
             // generate a pre-signed URL against the object in the bucket
             // string preSignedUrl = GeneratePreSignedURL(s3Client, awsBucketName, sampleImage, HttpVerb.GET, timeoutDuration);
             
             // AFTER:
-            StorageAdapterResponse storateAdapterResponse = await _storageAdapterClient.getTenantStorage(
-                new StorageAdapterRequest(cxTenantId, sampleImage, StorageAdapterRequest.SignedURIAction.Download));                
-            string? preSignedUrl = storateAdapterResponse.signedUri;
+            Uri? preSignedUrl = await StorageAdapterUtil.GeneratePresignedUrl(
+                                    s3ClientPresigned,
+                                    awsBucketName, 
+                                    sampleImage, 
+                                    HttpVerb.GET, 
+                                    1);
 
             // send the request / recieved the download stream 
             using (Stream respStream = await httpClient.GetStreamAsync(preSignedUrl))

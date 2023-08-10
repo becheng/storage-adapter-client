@@ -1,4 +1,5 @@
 ﻿using Azure.Core;
+using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Identity;
 using System.Net.Http.Headers;
@@ -6,8 +7,8 @@ using System.Net.Http.Json;
 using StorageAdapter.Models;
 using Amazon;
 using Amazon.S3;
-using Amazon.S3.Model;
 using Microsoft.Extensions.Configuration;
+
 namespace StorageAdapter.Client;
 
 #pragma warning disable 0436
@@ -67,41 +68,19 @@ public class StorageAdapterClient
             
             StorageType storageType = tenantStorageMapping.StorageType;
 
-            if (storageType == StorageType.AzureStorageAccount)
+            if (storageType == StorageType.AzStorage)
             {
-                // set reponse with the blobContainerClient 
                 response = new StorageAdapterResponse(
                             tenantStorageMapping, 
                             buildBlobContainerClient(tenantStorageMapping));
 
-                // TODO - or sasUri.  Note a StorageAdapterRequest object by SaSUri already exists.
-
             }
-            else if (storageType == StorageType.AmazonS3)
+            else if (storageType == StorageType.AwsS3)
             {
-                StorageAdapterRequest.SignedURIAction preSignedUriAction = request.signedURIAction;
-                HttpVerb httpVerb;
-
-                switch(preSignedUriAction)
-                {
-                    case StorageAdapterRequest.SignedURIAction.Upload:
-                        httpVerb = HttpVerb.PUT;
-                        break;
-                    case StorageAdapterRequest.SignedURIAction.Download:
-                        httpVerb = HttpVerb.GET;
-                        break;
-                    default:
-                        throw new Exception($"SignedURIAction not supported: {preSignedUriAction}");
-                }
-
-                // set reponse with awsS3 presignedUrl
                 response = new StorageAdapterResponse(
-                            tenantStorageMapping, 
-                            buildS3PresignedUrl(
-                                tenantStorageMapping, 
-                                request.fileName,
-                                httpVerb,
-                                request.timeoutDurationInHrs));
+                            tenantStorageMapping,
+                            buildS3Client(tenantStorageMapping));
+
             } 
             else
             {
@@ -121,12 +100,13 @@ public class StorageAdapterClient
     
     private BlobContainerClient buildBlobContainerClient(TenantToStorageMapping tenantStorageMapping)
     {
+        string? accountName = tenantStorageMapping.StorageIdentifier;
+        string? storageAccessKey = tenantStorageMapping.StorageAccessKeySecretRef; // TODO - retrieve from keyvault
         string? containerName = tenantStorageMapping.ContainerName;
-        string? connectionUri = tenantStorageMapping.ConnectionUri;
-        ConnectionUriType connectionUriType = tenantStorageMapping.ConnectionUriType;
+        ConnectionType connectionType = tenantStorageMapping.ConnectionType;
         bool isAzureCrossTenant = tenantStorageMapping.IsAzureCrossTenant;
         string? azureCrossTenantId = tenantStorageMapping.AzureCrossTenantId;
-
+        
         if (isAzureCrossTenant && azureCrossTenantId == null )
         {
             throw new Exception($"AzureCrossTenantId not found when IsAzureCrossTenant is true for tenantId: {tenantStorageMapping.CxTenantId}");
@@ -134,18 +114,24 @@ public class StorageAdapterClient
 
         BlobServiceClient blobServiceClient;
 
-        switch(connectionUriType)
+        switch(connectionType)
         {    
-            case ConnectionUriType.ConnectionString:
-                blobServiceClient = new BlobServiceClient(connectionUri);
+            case ConnectionType.AzConnectionString:
+                blobServiceClient = new BlobServiceClient(
+                    $"DefaultEndpointsProtocol=https;AccountName={accountName};AccountKey={storageAccessKey};EndpointSuffix=core.windows.net");  // 
                 break;
             
-            case ConnectionUriType.SasUri:
-                blobServiceClient = new BlobServiceClient(new Uri(connectionUri));
+            case ConnectionType.AzSasUri:
+                blobServiceClient = new BlobServiceClient(new Uri(storageAccessKey)); // a direct SasUri unlikeily to be used 
                 break;
 
-            case ConnectionUriType.ContainerUri:
-                Uri serviceUri = new Uri(connectionUri);
+            case ConnectionType.AzStorageSharedKey:
+                StorageSharedKeyCredential storageSharedKeyCredential = new StorageSharedKeyCredential(accountName, storageAccessKey);
+                blobServiceClient = new BlobServiceClient(new Uri($"https://{accountName}.blob.core.windows.net"), storageSharedKeyCredential);
+                break;
+
+            case ConnectionType.AzOauth:
+                Uri serviceUri = new Uri($"https://{accountName}.blob.core.windows.net");
                 TokenCredential credential;
             
                 if (isAzureCrossTenant) 
@@ -161,58 +147,43 @@ public class StorageAdapterClient
                 }
             
                 blobServiceClient = new BlobServiceClient(serviceUri, credential);  
+                
+                // var blobServiceClient = new BlobServiceClient(_serviceUri, new 
+                // AzureSasCredential(_sasToken), new BlobClientOptions()     
+                // {
+                //     Transport = new HttpClientTransport(new HttpClient(new HttpClientHandler 
+                //     {
+                //         Proxy = new WebProxy("proxy-url:port", BypassOnLocal: true),
+                //         UseProxy = true
+                //     }))
+                // });                
+                
                 break;
             
             default:
-                throw new Exception($"ConnectionUriType not supported: {connectionUriType}");
+                throw new Exception($"ConnectionType not supported: {connectionType}");
+
+
         }
 
 
-        // Create the container and return a container client object
+        // return a blob container client for the given container
         BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
 
         return containerClient;
     } 
 
-    private string buildS3PresignedUrl(
-        TenantToStorageMapping tenantStorageMapping, 
-        string objectKey,
-        HttpVerb verb,
-        double timeoutDurationInHrs)
-    {
-        string? bucketName = tenantStorageMapping.ConnectionUri;
+    private IAmazonS3 buildS3Client(TenantToStorageMapping tenantStorageMapping){
+        string? accessKeyId = tenantStorageMapping.StorageIdentifier; 
+        string? secretAccessKey = tenantStorageMapping.StorageAccessKeySecretRef; // TODO - retrieve from keyvault
         string? bucketRegion = tenantStorageMapping.StorageRegion;
         RegionEndpoint regionEndpoint = RegionEndpoint.GetBySystemName(tenantStorageMapping.StorageRegion);
 
-        // usage 'az keyvault secret set --vault-name <kvName> --name "awsS3Client--accessKeyId" --value <secretValue>'                    
-        // usage 'az keyvault secret set --vault-name <kvName> --name "awsS3Client--secretAccessKey" --value <secretValue>'                    
-            // "AKIAVYRZSLZIHY4J3H5Q", accessKey
-            // "1W5QJoxFOiA8mJyfojbRAnR2gZ6DYvilWV7BVqRk", asskeySecret
-        string? awsAccessKeyId = _configuration["awsS3Client:accessKeyId"];
-        string? awsSecretAccessKey = _configuration["awsS3Client:secretAccessKey"];
+        IAmazonS3 s3Client = new AmazonS3Client(accessKeyId, secretAccessKey, regionEndpoint);
 
-        IAmazonS3 s3Client = new AmazonS3Client(awsAccessKeyId, awsSecretAccessKey, regionEndpoint);
-
-        var request = new GetPreSignedUrlRequest
-        {
-            BucketName = bucketName,
-            Key = objectKey,
-            Verb = verb, 
-            Expires = DateTime.UtcNow.AddHours(timeoutDurationInHrs),
-        };
-
-        string preSigneUrl = s3Client.GetPreSignedURL(request);
-
-        return preSigneUrl;
+        return s3Client;
     }
 
-    private string buildAzSasUri(
-        TenantToStorageMapping tenantStorageMapping
-    )
-    {
-        // TODO - implement
-        return "";
-    }
-
+    
 }
 
