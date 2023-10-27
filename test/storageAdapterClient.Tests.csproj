@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\storageAdapterClient.csproj" Aliases="StorageAdapterClientModels"/>
+    <ProjectReference Include="..\src\storageAdapterClient.csproj" Aliases="StorageAdapterClientAlias"/>
   </ItemGroup>
 
   <ItemGroup>

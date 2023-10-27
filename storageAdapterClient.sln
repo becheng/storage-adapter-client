@@ -5,13 +5,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "storageAdapterClient", "src\storageAdapterClient.csproj", "{36E2CFBE-4681-41CF-B15C-D7B71CDF2CF0}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{3E55B826-F171-484F-9E83-04F4084EA0C1}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "storageAdapterClient.Tests", "test\storageAdapterClient.Tests\storageAdapterClient.Tests.csproj", "{A9833638-FD05-47E5-916E-4CB1C7D9A4B7}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "storage-sdks-testbed", "storage-sdks-testbed", "{02A8B51C-04D2-4FAF-9475-55C23EAF4F1E}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "storageSDKsTestBed.Tests", "test\storage-sdks-testbed\storageSDKsTestBed.Tests\storageSDKsTestBed.Tests.csproj", "{4C791FA0-CACB-4765-ACB7-1625E170865A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "storageAdapterClient.Tests", "test\storageAdapterClient.Tests.csproj", "{2F06687E-3C7C-4F28-9D03-098726564408}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,18 +20,13 @@ Global
 		{36E2CFBE-4681-41CF-B15C-D7B71CDF2CF0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36E2CFBE-4681-41CF-B15C-D7B71CDF2CF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36E2CFBE-4681-41CF-B15C-D7B71CDF2CF0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A9833638-FD05-47E5-916E-4CB1C7D9A4B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A9833638-FD05-47E5-916E-4CB1C7D9A4B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A9833638-FD05-47E5-916E-4CB1C7D9A4B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A9833638-FD05-47E5-916E-4CB1C7D9A4B7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4C791FA0-CACB-4765-ACB7-1625E170865A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4C791FA0-CACB-4765-ACB7-1625E170865A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C791FA0-CACB-4765-ACB7-1625E170865A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4C791FA0-CACB-4765-ACB7-1625E170865A}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{A9833638-FD05-47E5-916E-4CB1C7D9A4B7} = {3E55B826-F171-484F-9E83-04F4084EA0C1}
-		{02A8B51C-04D2-4FAF-9475-55C23EAF4F1E} = {3E55B826-F171-484F-9E83-04F4084EA0C1}
-		{4C791FA0-CACB-4765-ACB7-1625E170865A} = {02A8B51C-04D2-4FAF-9475-55C23EAF4F1E}
+		{2F06687E-3C7C-4F28-9D03-098726564408}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F06687E-3C7C-4F28-9D03-098726564408}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F06687E-3C7C-4F28-9D03-098726564408}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F06687E-3C7C-4F28-9D03-098726564408}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -1,15 +1,9 @@
-extern alias StorageAdapterClientModels;
-
-using StorageAdapterClientModels::StorageAdapter.Client;
 using Microsoft.Extensions.Configuration;
 
 namespace storageAdapterClient.Tests;
-public abstract class ClientTestsBase
+public abstract class BaseTests
 {
-
     // common readonly fields, set in base constructor
-    protected string cxTenantId { get; set; }
-    protected readonly StorageAdapterClient _storageAdapterClient;
     protected readonly IConfiguration _configuration;
     protected readonly string? sampleImage;
     protected readonly string path;
@@ -17,10 +11,10 @@ public abstract class ClientTestsBase
     protected readonly string downloadPath;
     
     // derived readonly fields, set in derived constructor
-    protected string? storageAcctName;
+    protected string? cxTenantId;
+    protected string? storageIdentifier;
     protected string? containerName;
-
-    public ClientTestsBase()
+    public BaseTests()
     {
 
         _configuration = new ConfigurationBuilder()
@@ -38,14 +32,13 @@ public abstract class ClientTestsBase
         // Background: xUnit test runner does not leverage the launch.json for environment vars so we need to set them here.
         Environment.SetEnvironmentVariable("AZURE_CLIENT_ID", _configuration["AZURE_CLIENT_ID"]);
         Environment.SetEnvironmentVariable("AZURE_TENANT_ID", _configuration["AZURE_TENANT_ID"]);
-        Environment.SetEnvironmentVariable("AZURE_CLIENT_SECRET", _configuration["AZURE_CLIENT_SECRET"]);
-        
-        // Important: instantiate the client here so that the environment variables are set
-        _storageAdapterClient = new StorageAdapterClient();
+        Environment.SetEnvironmentVariable("AZURE_CLIENT_SECRET", _configuration["AZURE_CLIENT_SECRET"]);        
 
     }
     public abstract void Authenticate();
-    public abstract Task Upload(); 
-    public abstract Task Download(); 
+    public abstract void Upload(); 
+    public abstract void Download();
+    public abstract void CanGenerateSignedUrl();
+     
 
 }

@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="storageAdapter.Models\src\storageAdapterModels.csproj" />
+    <ProjectReference Include="Models\src\storageAdapterModels.csproj" />
   </ItemGroup>
 
   <!--copy key artifacts to the output directory -->
